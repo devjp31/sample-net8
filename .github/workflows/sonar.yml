@@ -77,7 +77,7 @@ jobs:
           dotnet tool install -g dotnet-reportgenerator-globaltool
           export PATH="$PATH:$HOME/.dotnet/tools"
           reportgenerator \
-            -reports:"sample-net8/sample-net8.Tests/TestResults/**/coverage.opencover.xml" \
+            -reports:"sample-net8.Tests/TestResults/**/coverage.opencover.xml" \
             -targetdir:"coverage-report" \
             -reporttypes:"Cobertura"
           echo "Converted coverage files:"
