@@ -20,7 +20,7 @@ jobs:
       SONAR_PROJECTKEY: ${{ secrets.SONAR_PROJECTKEY }}
 
     steps:
-      # 1. Checkout code
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -37,7 +37,7 @@ jobs:
         working-directory: ./sample-net8
         run: dotnet restore
 
-      # 4. Start SonarCloud analysis
+      # 4. Begin SonarCloud Analysis
       - name: Begin SonarCloud Analysis
         working-directory: ./sample-net8
         run: |
@@ -51,7 +51,7 @@ jobs:
             /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
             /d:sonar.exclusions="**/bin/**,**/obj/**"
 
-      # 5. Build project
+      # 5. Build the project
       - name: Build the project
         working-directory: ./sample-net8
         run: dotnet build --configuration Release --no-incremental
@@ -61,7 +61,7 @@ jobs:
         working-directory: ./sample-net8
         run: dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory TestResults || true
 
-      # 7. End SonarCloud analysis
+      # 7. End SonarCloud Analysis
       - name: End SonarCloud Analysis
         working-directory: ./sample-net8
         run: |
