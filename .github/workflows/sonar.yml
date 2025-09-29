@@ -71,13 +71,21 @@ jobs:
             /p:CoverletOutputFormat=opencover \
             /p:CoverletOutput=TestResults/coverage.opencover.xml
             
+      # 7.4 Debug coverage output
+      - name: Debug coverage output
+        run: |
+          echo "Checking coverage file before converting..."
+          ls -lh sample-net8.Tests/TestResults || true
+          echo "---- Preview first 20 lines of coverage.opencover.xml ----"
+          head -n 20 sample-net8.Tests/TestResults/coverage.opencover.xml || true 
+          
       # 7.5 Convert coverage to Cobertura format for SonarCloud
       - name: Convert coverage to Cobertura format
         run: |
           dotnet tool install -g dotnet-reportgenerator-globaltool
           export PATH="$PATH:$HOME/.dotnet/tools"
           reportgenerator \
-            -reports:"sample-net8.Tests/TestResults/**/coverage.opencover.xml" \
+            -reports:"sample-net8.Tests/TestResults/coverage.opencover.xml" \
             -targetdir:"coverage-report" \
             -reporttypes:"Cobertura"
           echo "Converted coverage files:"
