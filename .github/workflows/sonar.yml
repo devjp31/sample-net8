@@ -50,8 +50,7 @@ jobs:
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
             /d:sonar.exclusions="**/bin/**,**/obj/**" \
-            /d:sonar.verbose=true \
-            /d:sonar.working.directory="$(pwd)/.sonarqube"
+            /d:sonar.verbose=true
 
       # 5. Build the project
       - name: Build the project
