@@ -29,41 +29,16 @@ namespace sample_net8.Controllers
             })
             .ToArray();
         }
-        // BLOCKER: Hardcoded password + SQL Injection risk
-        [HttpGet("login")]
-        public IActionResult InsecureLogin(string username)
+        [HttpGet(Name = "GetInfo")]
+        public IEnumerable<WeatherForecast> Info()
         {
-            string password = "admin123"; // Hardcoded password (Security Hotspot / Blocker)
-            return Ok("Login attempted ${password}");
-        }
-
-        // MAJOR: Unhandled exception + poor logging practice
-        [HttpGet("crash")]
-        public IActionResult CauseError()
-        {
-            try
+            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
-                int x = 0;
-                int y = 10 / x; // Divide by zero (Unhandled potential exception)
-            }
-            catch
-            {
-                // Swallowing exception — poor error handling
-            }
-            return Ok("Maybe crashed, maybe not.");
-        }
-
-        // MINOR: Dead code + redundant allocation
-        [HttpGet("redundant")]
-        public IActionResult RedundantCode()
-        {
-            string temp = "This is unnecessary"; // Unused variable
-            var numbers = new List<int> { 1, 2, 3 };
-            foreach (var n in numbers)
-            {
-                var doubled = n * 2; // Unused calculation (code smell)
-            }
-            return Ok("Redundant logic executed.");
+                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                TemperatureC = Random.Shared.Next(-20, 55),
+                Summary = Summaries[Random.Shared.Next(Summaries.Length)]
+            })
+            .ToArray();
         }
     }
 }
