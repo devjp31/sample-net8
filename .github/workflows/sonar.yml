@@ -57,14 +57,19 @@ jobs:
             /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
 
-      # 6 Build the entire solution
+      # 6 Build the solution
       - name: Build the solution
         run: dotnet build sample-net8.sln --configuration Release --no-incremental
 
+      # 6.5 Build test project
+      - name: Build test project
+        working-directory: ./sample-net8.Tests
+        run: dotnet build --configuration Release
+
       # 7 Run Unit Tests and collect coverage
       - name: Run tests with coverage
-        run: |
-          dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory ../TestResults
+        working-directory: ./sample-net8.Tests
+        run: dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory ../TestResults
 
       # 8 Generate coverage summary (optional)
       - name: Generate coverage report
@@ -77,6 +82,7 @@ jobs:
           echo "Coverage Summary:"
           cat coverage-report/Summary.txt || true
       
+      # 8.5 Move coverage file for SonarCloud
       - name: Move coverage file for SonarCloud
         run: |
           echo "Moving coverage reports..."
