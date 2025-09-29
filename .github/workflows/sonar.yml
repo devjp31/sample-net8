@@ -69,7 +69,7 @@ jobs:
             --collect:"XPlat Code Coverage" \
             --results-directory ./TestResults
 
-          echo "🔍 Looking for coverage files..."
+          echo "Looking for coverage files..."
           find . -type f -name "coverage.cobertura.xml"
 
       # 8 Generate coverage summary (optional)
@@ -80,8 +80,16 @@ jobs:
             -targetdir:coverage-report \
             -reporttypes:TextSummary
 
-          echo "✅ Coverage Summary:"
+          echo "Coverage Summary:"
           cat coverage-report/Summary.txt || true
+
+      - name: Debug coverage files
+        run: |
+          echo "Looking for coverage reports..."
+          find . -name "coverage.cobertura.xml" || true
+          echo "------"
+          echo "Listing TestResults folder structure:"
+          ls -R ./TestResults || true
 
       # 9 End SonarCloud Analysis
       - name: End SonarCloud Analysis
@@ -104,7 +112,7 @@ jobs:
       - name: Fail if Quality Gate failed
         if: env.status != 'OK'
         run: |
-          echo "❌ SonarCloud Quality Gate failed. Please review the issues in SonarCloud dashboard."
+          echo "SonarCloud Quality Gate failed. Please review the issues in SonarCloud dashboard."
           exit 1
 
 
