@@ -62,22 +62,23 @@ jobs:
       
       # 7 Run Unit Tests and collect coverage (OpenCover format)
       - name: Run tests with coverage (OpenCover)
-        working-directory: ./sample-net8.Tests
         run: |
+          dotnet build sample-net8.sln --configuration Release
           dotnet tool install --global coverlet.console
           export PATH="$PATH:$HOME/.dotnet/tools"
-          dotnet test --no-build --configuration Release \
-            /p:CollectCoverage=true \
-            /p:CoverletOutputFormat=opencover \
-            /p:CoverletOutput=TestResults/coverage.opencover.xml
+          coverlet ./sample-net8.Tests/bin/Release/net8.0/sample-net8.Tests.dll \
+            --target "dotnet" \
+            --targetargs "test sample-net8.Tests/sample-net8.Tests.csproj --no-build --configuration Release" \
+            --format opencover \
+            --output sample-net8.Tests/TestResults/coverage.opencover.xml
             
       # 7.4 Debug coverage output
       - name: Debug coverage output
         run: |
-          echo "Checking coverage file before converting..."
-          ls -lh sample-net8.Tests/TestResults || true
-          echo "---- Preview first 20 lines of coverage.opencover.xml ----"
-          head -n 20 sample-net8.Tests/TestResults/coverage.opencover.xml || true 
+          echo "Checking generated coverage files..."
+          find . -type f -name "coverage*.xml" || echo "No coverage XML found!"
+          echo "Current directory structure:"
+          tree sample-net8.Tests || ls -R sample-net8.Tests
           
       # 7.5 Convert coverage to Cobertura format for SonarCloud
       - name: Convert coverage to Cobertura format
