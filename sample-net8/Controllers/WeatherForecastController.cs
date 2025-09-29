@@ -29,7 +29,7 @@ namespace sample_net8.Controllers
             })
             .ToArray();
         }
-        [HttpGet(Name = "GetInfo")]
+        [HttpGet("Info")]
         public IEnumerable<WeatherForecast> Info()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
