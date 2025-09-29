@@ -34,15 +34,7 @@ namespace sample_net8.Controllers
         public IActionResult InsecureLogin(string username)
         {
             string password = "admin123"; // Hardcoded password (Security Hotspot / Blocker)
-            string connStr = "Server=localhost;Database=DemoDB;User Id=sa;Password=" + password + ";";
-            using var conn = new SqlConnection(connStr);
-
-            // SQL Injection risk (Concatenated SQL)
-            string query = "SELECT * FROM Users WHERE username = '" + username + "'";
-            SqlCommand cmd = new SqlCommand(query, conn);
-            conn.Open();
-            var reader = cmd.ExecuteReader();
-            return Ok("Login attempted");
+            return Ok("Login attempted ${password}");
         }
 
         // MAJOR: Unhandled exception + poor logging practice
