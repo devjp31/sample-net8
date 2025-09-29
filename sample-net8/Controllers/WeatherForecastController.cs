@@ -15,7 +15,7 @@ namespace sample_net8.Controllers
 
         public WeatherForecastController(ILogger<WeatherForecastController> logger)
         {
-            _logger = logger;
+            _logger = logger; 
         }
 
         [HttpGet(Name = "GetWeatherForecast")]
