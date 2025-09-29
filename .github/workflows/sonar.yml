@@ -20,24 +20,26 @@ jobs:
       SONAR_PROJECTKEY: ${{ secrets.SONAR_PROJECTKEY }}
 
     steps:
-      # 1. Checkout
+      # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Setup .NET
-      - name: Setup .NET SDK
+      # 2. Setup .NET SDK
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
       # 3. Restore dependencies
       - name: Restore dependencies
-        run: dotnet restore sample-net8/sample-net8.csproj
+        working-directory: ./sample-net8
+        run: dotnet restore
 
-      # 4. Begin SonarCloud Analysis 
+      # 4. Start SonarCloud analysis
       - name: Begin SonarCloud Analysis
+        working-directory: ./sample-net8
         run: |
           dotnet tool install --global dotnet-sonarscanner
           export PATH="$PATH:$HOME/.dotnet/tools"
@@ -46,20 +48,22 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.projectBaseDir="sample-net8" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
             /d:sonar.exclusions="**/bin/**,**/obj/**"
 
-      # 5. Build Project
+      # 5. Build project
       - name: Build the project
-        run: dotnet build sample-net8/sample-net8.csproj --configuration Release --no-incremental
+        working-directory: ./sample-net8
+        run: dotnet build --configuration Release --no-incremental
 
-      # 6. Run Tests (optional)
+      # 6. Run tests with coverage
       - name: Run tests with coverage
-        run: dotnet test sample-net8/sample-net8.csproj --no-build --collect:"XPlat Code Coverage" --results-directory TestResults || true
+        working-directory: ./sample-net8
+        run: dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory TestResults || true
 
-      # 7. End SonarCloud Analysis
+      # 7. End SonarCloud analysis
       - name: End SonarCloud Analysis
+        working-directory: ./sample-net8
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
