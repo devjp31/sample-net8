@@ -52,7 +52,7 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.cs.opencover.reportsPaths="../sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
+            /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.cobertura.xml" \
             /d:sonar.exclusions="**/bin/**,**/obj/**" \
             /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
@@ -64,14 +64,7 @@ jobs:
       # 7 Run Unit Tests and collect coverage
       - name: Run tests with coverage
         run: |
-          dotnet test sample-net8.Tests/sample-net8.Tests.csproj \
-            --configuration Release \
-            --no-build \
-            --collect:"XPlat Code Coverage" \
-            --results-directory ./TestResults
-
-          echo "Looking for coverage files..."
-          find . -type f -name "coverage.cobertura.xml"
+          dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory ../TestResults
 
       # 8 Generate coverage summary (optional)
       - name: Generate coverage report
@@ -83,15 +76,14 @@ jobs:
 
           echo "Coverage Summary:"
           cat coverage-report/Summary.txt || true
-
-      - name: Debug coverage files
+      
+      - name: Move coverage file for SonarCloud
         run: |
-          echo "Looking for coverage reports..."
-          find . -name "coverage.cobertura.xml" || true
-          echo "------"
-          echo "Listing TestResults folder structure:"
-          ls -R ./TestResults || true
-
+          echo "Moving coverage reports..."
+          mkdir -p coverage
+          find . -name "coverage.cobertura.xml" -exec cp {} coverage/ \;
+          ls -R coverage
+    
       # 9 End SonarCloud Analysis
       - name: End SonarCloud Analysis
         run: |
