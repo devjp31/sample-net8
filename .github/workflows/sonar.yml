@@ -52,48 +52,35 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.cobertura.xml" \
-            /d:sonar.exclusions="**/bin/**,**/obj/**" \
+            /d:sonar.cs.opencover.reportsPaths="sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
             /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
-
+      
       # 6 Build the solution
       - name: Build the solution
         run: dotnet build sample-net8.sln --configuration Release --no-incremental
-
-      # 6.5 Build test project
-      - name: Build test project
-        working-directory: ./sample-net8.Tests
-        run: dotnet build --configuration Release
-
+      
       # 7 Run Unit Tests and collect coverage
       - name: Run tests with coverage
+        working-directory: ./sample-net8.Tests
         run: |
-          dotnet test ./sample-net8.Tests/sample-net8.Tests.csproj \
-            --configuration Release \
-            --no-build \
+          dotnet test --no-build --configuration Release \
             --collect:"XPlat Code Coverage" \
-            --results-directory ./TestResults \
-            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
-
-      # 8 Generate coverage summary (optional)
-      - name: Generate coverage report
-        run: |
-          reportgenerator \
-            -reports:**/coverage.cobertura.xml \
-            -targetdir:coverage-report \
-            -reporttypes:TextSummary
-
-          echo "Coverage Summary:"
-          cat coverage-report/Summary.txt || true
+            --results-directory ./TestResults
       
-      # 8.5 Move coverage file for SonarCloud
-      - name: Move coverage file for SonarCloud
+      # 7.5 Debug coverage files 
+      - name: Debug coverage files
         run: |
-          echo "Moving coverage reports..."
-          mkdir -p coverage
-          find . -name "coverage.cobertura.xml" -exec cp {} coverage/ \;
-          ls -R coverage
+          echo "Looking for coverage reports..."
+          find ./sample-net8.Tests/TestResults -name "coverage.cobertura.xml" || true
+          echo "------"
+          ls -R ./sample-net8.Tests/TestResults || true
+      
+      # 8 End SonarCloud Analysis
+      - name: End SonarCloud Analysis
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
     
       # 9 End SonarCloud Analysis
       - name: End SonarCloud Analysis
