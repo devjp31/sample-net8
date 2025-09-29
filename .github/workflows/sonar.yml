@@ -1,4 +1,4 @@
-name: SonarCloud CI & Security Report (.NET)
+name: SonarCloud CI for sample-net8 (.NET 8)
 
 on:
   push:
@@ -9,24 +9,24 @@ on:
   workflow_dispatch:
 
 jobs:
-  sonarcloud:
-    name: SonarCloud Scan, Build, and Generate Report
+  build:
+    name: Build and Analyze with SonarCloud
     runs-on: ubuntu-latest
 
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_HOST_URL: "https://sonarcloud.io"
       SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
       SONAR_PROJECTKEY: ${{ secrets.SONAR_PROJECTKEY }}
 
     steps:
-      # 1. Checkout code
+      # 1. Checkout Source
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Setup .NET
+      # 2. Setup .NET 8 SDK
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -34,7 +34,7 @@ jobs:
 
       # 3. Restore dependencies
       - name: Restore dependencies
-        run: dotnet restore Demo-API.sln
+        run: dotnet restore sample-net8/sample-net8.csproj
 
       # 4. Begin SonarCloud Analysis
       - name: Begin SonarCloud Analysis
@@ -46,17 +46,18 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.projectBaseDir="." \
+            /d:sonar.projectBaseDir="sample-net8" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
             /d:sonar.exclusions="**/bin/**,**/obj/**"
 
       # 5. Build Project
-      - name: Build the project
-        run: dotnet build Demo-API.sln --configuration Release --no-incremental
+      - name: Build project
+        run: dotnet build sample-net8/sample-net8.csproj --configuration Release --no-incremental
 
-      # 6. Run Tests with coverage
+      # 6. Run Tests (optional)
       - name: Run tests with coverage
-        run: dotnet test Demo-API.sln --no-build --collect:"XPlat Code Coverage" --results-directory TestResults || true
+        run: |
+          dotnet test sample-net8.sln --no-build --collect:"XPlat Code Coverage" --results-directory TestResults || true
 
       # 7. End SonarCloud Analysis
       - name: End SonarCloud Analysis
