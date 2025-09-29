@@ -40,5 +40,19 @@ namespace sample_net8.Controllers
             })
             .ToArray();
         }
+        [HttpGet("crash")]
+        public IActionResult CauseError()
+        {
+            try
+            {
+                int x = 0;
+                int y = 10 / x; // Divide by zero (Unhandled potential exception)
+            }
+            catch
+            {
+                // Swallowing exception   poor error handling
+            }
+            return Ok("Maybe crashed, maybe not.");
+        }
     }
 }
