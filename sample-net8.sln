@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36414.22 d17.14
+VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sample-net8", "sample-net8\sample-net8.csproj", "{C3628D14-341D-4648-A699-C8F571A43075}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sample-net8.Tests", "sample-net8.Tests\sample-net8.Tests.csproj", "{D1AB3667-0FFD-4F74-B4F8-C8FBC03D9AE5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{C3628D14-341D-4648-A699-C8F571A43075}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3628D14-341D-4648-A699-C8F571A43075}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3628D14-341D-4648-A699-C8F571A43075}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1AB3667-0FFD-4F74-B4F8-C8FBC03D9AE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1AB3667-0FFD-4F74-B4F8-C8FBC03D9AE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1AB3667-0FFD-4F74-B4F8-C8FBC03D9AE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1AB3667-0FFD-4F74-B4F8-C8FBC03D9AE5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
