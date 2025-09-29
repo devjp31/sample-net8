@@ -53,7 +53,7 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.cs.opencover.reportsPaths="sample-net8/sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
+            /d:sonar.cs.opencover.reportsPaths="sample-net8/sample-net8.Tests/TestResults/**/coverage.opencover.xml"
             /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
       
@@ -74,11 +74,12 @@ jobs:
             
       # 7.5 Convert coverage to Cobertura format for SonarCloud
       - name: Convert coverage to Cobertura format
+        working-directory: ./sample-net8
         run: |
           dotnet tool install -g dotnet-reportgenerator-globaltool
           export PATH="$PATH:$HOME/.dotnet/tools"
           reportgenerator \
-            -reports:"sample-net8/sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
+            -reports:"sample-net8.Tests/TestResults/**/coverage.opencover.xml" \
             -targetdir:"coverage-report" \
             -reporttypes:"Cobertura"
           echo "Converted coverage files:"
