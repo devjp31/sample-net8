@@ -1,0 +1,334 @@
+name: SonarCloud CI & Security Report (.NET)
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Scan, Build, and Generate Report
+    runs-on: ubuntu-latest
+
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+      SONAR_PROJECTKEY: ${{ secrets.SONAR_PROJECTKEY }}
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 3. Restore dependencies
+      - name: Restore dependencies
+        run: dotnet restore Demo-API.sln
+
+      # 4. Begin SonarCloud Analysis
+      - name: Begin SonarCloud Analysis
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet sonarscanner begin \
+            /k:"${{ env.SONAR_PROJECTKEY }}" \
+            /o:"${{ env.SONAR_ORGANIZATION }}" \
+            /d:sonar.token="${{ env.SONAR_TOKEN }}" \
+            /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
+            /d:sonar.projectBaseDir="." \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
+            /d:sonar.exclusions="**/bin/**,**/obj/**"
+
+      # 5. Build Project
+      - name: Build the project
+        run: dotnet build Demo-API.sln --configuration Release --no-incremental
+
+      # 6. Run Tests with coverage
+      - name: Run tests with coverage
+        run: dotnet test Demo-API.sln --no-build --collect:"XPlat Code Coverage" --results-directory TestResults || true
+
+      # 7. End SonarCloud Analysis
+      - name: End SonarCloud Analysis
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
+
+      # 8. Check Quality Gate
+      - name: Check Quality Gate status
+        id: qualitygate
+        run: |
+          echo "Checking SonarCloud Quality Gate status..."
+          response=$(curl -s -u "$SONAR_TOKEN:" "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECTKEY")
+          echo "Response: $response"
+          status=$(echo $response | jq -r '.projectStatus.status')
+          echo "Quality Gate Status: $status"
+          echo "status=$status" >> $GITHUB_ENV
+
+      # 9. สร้างรายงาน PDF
+      - name: Generate PDF Report
+        if: always()
+        run: |
+          echo "Generating SonarCloud PDF Report..."
+          pip install reportlab requests beautifulsoup4 pytz
+          python <<'EOF'
+          import os
+          import pytz
+          import requests
+          from datetime import datetime
+          from bs4 import BeautifulSoup
+          from reportlab.lib.pagesizes import A4
+          from reportlab.pdfgen import canvas
+          from reportlab.lib import colors
+          from reportlab.platypus import Table, TableStyle, Paragraph
+          from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+          from reportlab.lib.enums import TA_LEFT
+
+          TOKEN = os.getenv("SONAR_TOKEN")
+          PROJECT_KEY = os.getenv("SONAR_PROJECTKEY")
+          HOST = os.getenv("SONAR_HOST_URL")
+          ORG = os.getenv("SONAR_ORGANIZATION")
+          output_path = "Sonar_Report.pdf"
+
+          # === เวลาไทย ===
+          bangkok_tz = pytz.timezone("Asia/Bangkok")
+          local_time = datetime.now(bangkok_tz).strftime("%Y-%m-%d %H:%M")
+
+          # === ดึงข้อมูลจาก SonarCloud ===
+          metrics_url = f"{HOST}/api/measures/component?component={PROJECT_KEY}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density"
+          issues_url = f"{HOST}/api/issues/search?componentKeys={PROJECT_KEY}&statuses=OPEN,CONFIRMED,REOPENED&ps=500"
+          hotspots_url = f"{HOST}/api/hotspots/search?projectKey={PROJECT_KEY}&status=TO_REVIEW&ps=500"
+
+          metrics = requests.get(metrics_url, auth=(TOKEN, "")).json()
+          issues = requests.get(issues_url, auth=(TOKEN, "")).json().get("issues", [])
+          hotspots = requests.get(hotspots_url, auth=(TOKEN, "")).json().get("hotspots", [])
+
+          m = {item["metric"]: item["value"] for item in metrics.get("component", {}).get("measures", [])}
+          total_issues = len(issues)
+          coverage = m.get("coverage", "N/A")
+
+          # === ตรวจสอบสถานะ Quality Gate ===
+          status_url = f"{HOST}/api/qualitygates/project_status?projectKey={PROJECT_KEY}"
+          status_response = requests.get(status_url, auth=(TOKEN, "")).json()
+          quality_status = status_response.get("projectStatus", {}).get("status", "UNKNOWN")
+
+          # === นับจำนวนตาม Severity ===
+          sev_levels = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"]
+          sev_count = {s: 0 for s in sev_levels}
+          for i in issues:
+              sev = i.get("severity", "INFO").upper()
+              if sev in sev_count:
+                  sev_count[sev] += 1
+
+          # === เริ่มสร้าง PDF ===
+          c = canvas.Canvas(output_path, pagesize=A4)
+          width, height = A4
+          y = height - 70
+
+          # === Header ===
+          c.setFont("Helvetica-Bold", 16)
+          c.setFillColor(colors.black)
+          c.drawString(70, y, "SonarCloud Security & Code Quality Report")
+          y -= 25
+          c.setFont("Helvetica", 11)
+          c.drawString(70, y, f"Project: {PROJECT_KEY}")
+          y -= 14
+          c.drawString(70, y, f"Host: {HOST}")
+          y -= 14
+          c.drawString(70, y, f"Date: {local_time}")
+          y -= 18
+
+          # === Summary Info ===
+          c.setFont("Helvetica-Bold", 11)
+          c.drawString(70, y, f"Total Issues: {total_issues}")
+          y -= 14
+          c.drawString(70, y, f"Coverage: {coverage}%")
+          y -= 18
+          c.drawString(70, y, f"Security Hotspots: {len(hotspots)}")
+          y -= 18
+
+          # === Quality Gate ===
+          c.setFont("Helvetica-Bold", 11)
+          c.drawString(70, y, "Quality Gate: ")
+          if quality_status == "OK":
+              c.setFillColor(colors.green)
+              c.drawString(150, y, "PASSED")
+          else:
+              c.setFillColor(colors.red)
+              c.drawString(150, y, "FAILED")
+          c.setFillColor(colors.black)
+          y -= 25
+          c.line(70, y, width - 70, y)
+          y -= 25
+
+          # === Summary Metrics ===
+          c.setFont("Helvetica-Bold", 12)
+          c.drawString(70, y, "SUMMARY METRICS")
+          y -= 18
+          c.setFont("Helvetica", 10)
+          for label, key in [
+              ("Bugs", "bugs"),
+              ("Code Smells", "code_smells"),
+              ("Vulnerabilities", "vulnerabilities"),
+              ("Duplicated Lines (%)", "duplicated_lines_density"),
+              ("Coverage (%)", "coverage")
+          ]:
+              value = m.get(key, "N/A")
+              try:
+                  if key in ("duplicated_lines_density", "coverage") and value != "N/A":
+                      value = f"{float(value):.1f}%"
+              except (ValueError, TypeError):
+                  pass
+              c.drawString(85, y, f"{label}: {value}")
+              y -= 14
+          y -= 10
+
+          # === Severity Summary Table ===
+          c.setFont("Helvetica-Bold", 12)
+          c.drawString(70, y, "ISSUE SEVERITY SUMMARY")
+          y -= 20
+
+          data = [["Severity Level", "Number of Issues"]]
+          for sev in sev_levels:
+              data.append([sev.title(), str(sev_count[sev])])
+
+          table = Table(data, colWidths=[200, 150])
+          table.setStyle(TableStyle([
+              ("BOX", (0,0), (-1,-1), 0.5, colors.black),
+              ("INNERGRID", (0,0), (-1,-1), 0.25, colors.black),
+              ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+              ("TEXTCOLOR", (0,0), (-1,-1), colors.black),
+              ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+              ("ALIGN", (0,0), (-1,-1), "CENTER"),
+          ]))
+          table.wrapOn(c, width, height)
+          table.drawOn(c, 80, y - 100)
+          y -= 130
+
+          # === Detailed Issues ===
+          c.setFont("Helvetica-Bold", 12)
+          c.drawString(70, y, "DETAILED ISSUES")
+          y -= 18
+          c.setFont("Helvetica", 9)
+
+          styles = getSampleStyleSheet()
+          solution_style = ParagraphStyle(
+              'SolutionText',
+              parent=styles['Normal'],
+              fontName='Helvetica',
+              fontSize=8,
+              leading=10,
+              textColor=colors.black,
+              alignment=TA_LEFT,
+          )
+
+          for issue in issues:
+              msg = issue.get("message", "")
+              typ = issue.get("type", "")
+              sev = issue.get("severity", "")
+              status = issue.get("status", "")
+              file = issue.get("component", "").split(":")[-1]
+              line = issue.get("line", "N/A")
+              rule = issue.get("rule", "N/A")
+
+              # ดึง Solution
+              rule_desc = "(No solution provided)"
+              try:
+                  rule_api = f"{HOST}/api/rules/show?key={rule}&organization={ORG}&actives=true"
+                  rule_data = requests.get(rule_api, auth=(TOKEN, "")).json()
+                  html_desc = rule_data.get("rule", {}).get("htmlDesc", "")
+                  description = rule_data.get("rule", {}).get("description", "")
+                  text = BeautifulSoup(html_desc, "html.parser").get_text().strip()
+                  if not text and description:
+                      text = description.strip()
+                  if text:
+                      rule_desc = text
+              except Exception:
+                  pass
+
+              # แสดงรายละเอียด
+              c.setFont("Helvetica-Bold", 9)
+              c.drawString(85, y, f"Type: {typ}, Severity: {sev}, Status: {status}")
+              y -= 12
+              c.setFont("Helvetica-Oblique", 9)
+              c.setFillColor(colors.gray)
+              c.drawString(100, y, msg)
+              y -= 12
+              c.setFont("Helvetica", 9)
+              c.setFillColor(colors.black)
+              c.drawString(100, y, f"File: {file}, Line: {line}, Rule: {rule}")
+              y -= 12
+
+              paragraph = Paragraph(f"<b>Solution:</b><br/>{rule_desc}", solution_style)
+              w, h = paragraph.wrap(width - 140, y)
+              if y - h < 80:
+                  c.showPage()
+                  y = height - 70
+              paragraph.drawOn(c, 100, y - h)
+              y -= (h + 15)
+
+              c.setStrokeColor(colors.lightgrey)
+              c.line(80, y, width - 80, y)
+              y -= 15
+              if y < 80:
+                  c.showPage()
+                  y = height - 70
+
+          # === Security Hotspots ===
+          if hotspots:
+              c.setFont("Helvetica-Bold", 12)
+              c.drawString(70, y, "SECURITY HOTSPOTS")
+              y -= 18
+              c.setFont("Helvetica", 9)
+              for h in hotspots:
+                  msg = h.get("message", "")
+                  file = h.get("component", "").split(":")[-1]
+                  line = h.get("line", "N/A")
+                  status = h.get("status", "N/A")
+                  review_prio = h.get("vulnerabilityProbability", "N/A")
+                  c.setFont("Helvetica-Bold", 9)
+                  c.drawString(85, y, f"File: {file}, Line: {line}")
+                  y -= 12
+                  c.setFont("Helvetica", 9)
+                  c.drawString(100, y, f"Status: {status}, Priority: {review_prio}")
+                  y -= 12
+                  c.setFont("Helvetica-Oblique", 9)
+                  c.setFillColor(colors.gray)
+                  c.drawString(100, y, msg)
+                  c.setFillColor(colors.black)
+                  y -= 15
+                  if y < 80:
+                      c.showPage()
+                      y = height - 70
+
+          # === Footer ===
+          c.setFont("Helvetica-Oblique", 9)
+          c.setFillColor(colors.gray)
+          c.drawString(70, 60, "End of Report — Generated automatically by GitHub Actions + SonarCloud API.")
+          c.save()
+          EOF
+
+      # 10. อัปโหลด PDF
+      - name: Upload PDF Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarcloud-report
+          path: Sonar_Report.pdf
+
+      # 11. Fail หาก Quality Gate ไม่ผ่าน
+      - name: Fail if Quality Gate failed
+        if: env.status != 'OK'
+        run: |
+          echo "SonarCloud Quality Gate failed. Please review the issues in SonarCloud dashboard."
+          exit 1
