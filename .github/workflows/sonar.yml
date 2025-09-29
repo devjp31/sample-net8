@@ -20,28 +20,32 @@ jobs:
       SONAR_PROJECTKEY: ${{ secrets.SONAR_PROJECTKEY }}
 
     steps:
-      # 1. Checkout repository
+      # 1 Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Setup .NET SDK
+      # 2 Setup .NET SDK
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # 3. Restore dependencies
-      - name: Restore dependencies
-        working-directory: ./sample-net8
-        run: dotnet restore
-
-      # 4. Begin SonarCloud Analysis
-      - name: Begin SonarCloud Analysis
-        working-directory: ./sample-net8
+      # 3 Install Tools
+      - name: Install SonarScanner & ReportGenerator
         run: |
           dotnet tool install --global dotnet-sonarscanner
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+      # 4 Restore dependencies (ทั้ง 2 โปรเจกต์)
+      - name: Restore dependencies
+        run: dotnet restore sample-net8.sln
+
+      # 5 Begin SonarCloud Analysis
+      - name: Begin SonarCloud Analysis
+        run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner begin \
             /k:"${{ env.SONAR_PROJECTKEY }}" \
@@ -49,27 +53,43 @@ jobs:
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
-            /d:sonar.exclusions="**/bin/**,**/obj/**" \
+            /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
 
-      # 5. Build the project
-      - name: Build the project
-        working-directory: ./sample-net8
-        run: dotnet build --configuration Release --no-incremental
+      # 6 Build the entire solution
+      - name: Build the solution
+        run: dotnet build sample-net8.sln --configuration Release --no-incremental
 
-      # 6. Run tests with coverage
+      # 7 Run Unit Tests and collect coverage
       - name: Run tests with coverage
-        working-directory: ./sample-net8
-        run: dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory TestResults || true
+        run: |
+          dotnet test sample-net8.Tests/sample-net8.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
 
-      # 7. End SonarCloud Analysis
+          echo "🔍 Looking for coverage files..."
+          find . -type f -name "coverage.cobertura.xml"
+
+      # 8 Generate coverage summary (optional)
+      - name: Generate coverage report
+        run: |
+          reportgenerator \
+            -reports:**/coverage.cobertura.xml \
+            -targetdir:coverage-report \
+            -reporttypes:TextSummary
+
+          echo "✅ Coverage Summary:"
+          cat coverage-report/Summary.txt || true
+
+      # 9 End SonarCloud Analysis
       - name: End SonarCloud Analysis
-        working-directory: ./sample-net8
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
 
-      # 8. Check Quality Gate
+      # 10 Check Quality Gate
       - name: Check Quality Gate status
         id: qualitygate
         run: |
@@ -80,7 +100,15 @@ jobs:
           echo "Quality Gate Status: $status"
           echo "status=$status" >> $GITHUB_ENV
 
-      # 9. สร้างรายงาน PDF
+      # 11 Fail Workflow if Quality Gate Failed
+      - name: Fail if Quality Gate failed
+        if: env.status != 'OK'
+        run: |
+          echo "❌ SonarCloud Quality Gate failed. Please review the issues in SonarCloud dashboard."
+          exit 1
+
+
+      # 12. สร้างรายงาน PDF
       - name: Generate PDF Report
         if: always()
         run: |
@@ -323,7 +351,7 @@ jobs:
           c.save()
           EOF
 
-      # 10. อัปโหลด PDF
+      # 13. อัปโหลด PDF
       - name: Upload PDF Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -331,7 +359,7 @@ jobs:
           name: sonarcloud-report
           path: Sonar_Report.pdf
 
-      # 11. Fail หาก Quality Gate ไม่ผ่าน
+      # 14. Fail หาก Quality Gate ไม่ผ่าน
       - name: Fail if Quality Gate failed
         if: env.status != 'OK'
         run: |
