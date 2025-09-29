@@ -30,20 +30,20 @@ namespace sample_net8.Controllers
             .ToArray();
         }
         // BLOCKER: Hardcoded password + SQL Injection risk
-        //[HttpGet("login")]
-        //public IActionResult InsecureLogin(string username)
-        //{
-        //    string password = "admin123"; // Hardcoded password (Security Hotspot / Blocker)
-        //    string connStr = "Server=localhost;Database=DemoDB;User Id=sa;Password=" + password + ";";
-        //    using var conn = new SqlConnection(connStr);
+        [HttpGet("login")]
+        public IActionResult InsecureLogin(string username)
+        {
+            string password = "admin123"; // Hardcoded password (Security Hotspot / Blocker)
+            string connStr = "Server=localhost;Database=DemoDB;User Id=sa;Password=" + password + ";";
+            using var conn = new SqlConnection(connStr);
 
-        //    // SQL Injection risk (Concatenated SQL)
-        //    string query = "SELECT * FROM Users WHERE username = '" + username + "'";
-        //    SqlCommand cmd = new SqlCommand(query, conn);
-        //    conn.Open();
-        //    var reader = cmd.ExecuteReader();
-        //    return Ok("Login attempted");
-        //}
+            // SQL Injection risk (Concatenated SQL)
+            string query = "SELECT * FROM Users WHERE username = '" + username + "'";
+            SqlCommand cmd = new SqlCommand(query, conn);
+            conn.Open();
+            var reader = cmd.ExecuteReader();
+            return Ok("Login attempted");
+        }
 
         // MAJOR: Unhandled exception + poor logging practice
         [HttpGet("crash")]
