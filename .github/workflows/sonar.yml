@@ -53,7 +53,7 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.cs.opencover.reportsPaths="**/sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
+            /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.cobertura.xml" \
             /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
       
@@ -67,12 +67,14 @@ jobs:
         run: |
           dotnet test sample-net8.Tests.csproj --no-build --configuration Release \
             --collect:"XPlat Code Coverage" --results-directory TestResults
-      
+    
       # 8 Debug coverage files 
       - name: Debug coverage files
         run: |
           echo "Looking for coverage reports..."
-          find . -name "coverage.cobertura.xml" || true
+          find . -name "coverage.cobertura.xml" -exec ls -lh {} \;
+          echo "---- Preview first 30 lines ----"
+          head -n 30 $(find . -name "coverage.cobertura.xml" | head -n 1)
       
       # 9 End SonarCloud Analysis
       - name: End SonarCloud Analysis
