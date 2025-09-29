@@ -45,6 +45,7 @@ jobs:
 
       # 5 Begin SonarCloud Analysis
       - name: Begin SonarCloud Analysis
+        working-directory: .
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner begin \
@@ -52,7 +53,7 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.cs.opencover.reportsPaths="sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
+            /d:sonar.cs.opencover.reportsPaths="**/sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
             /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
       
@@ -71,10 +72,11 @@ jobs:
       - name: Debug coverage files
         run: |
           echo "Looking for coverage reports..."
-          find . -name "coverage.cobertura.xml"
+          find . -name "coverage.cobertura.xml" || true
       
       # 9 End SonarCloud Analysis
       - name: End SonarCloud Analysis
+        working-directory: .
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
