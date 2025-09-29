@@ -53,7 +53,7 @@ jobs:
             /o:"${{ env.SONAR_ORGANIZATION }}" \
             /d:sonar.token="${{ env.SONAR_TOKEN }}" \
             /d:sonar.host.url="${{ env.SONAR_HOST_URL }}" \
-            /d:sonar.cs.opencover.reportsPaths="**/sample-net8.Tests/TestResults/**/coverage.cobertura.xml" \
+            /d:sonar.cs.opencover.reportsPaths="sample-net8.Tests/TestResults/coverage.opencover.xml" \
             /d:sonar.coverage.exclusions="**/Migrations/**,**/wwwroot/**,**/obj/**,**/bin/**,**/*.cshtml" \
             /d:sonar.verbose=true
       
@@ -61,12 +61,16 @@ jobs:
       - name: Build the solution
         run: dotnet build sample-net8.sln --configuration Release --no-incremental
       
-      # 7 Run Unit Tests and collect coverage
-      - name: Run tests with coverage
+      # 7 Run Unit Tests and collect coverage (OpenCover format)
+      - name: Run tests with coverage (OpenCover)
         working-directory: ./sample-net8.Tests
         run: |
-          dotnet test sample-net8.Tests.csproj --no-build --configuration Release \
-            --collect:"XPlat Code Coverage" --results-directory TestResults
+          dotnet tool install --global coverlet.console
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet test --no-build --configuration Release \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=opencover \
+            /p:CoverletOutput=TestResults/coverage.opencover.xml
             
       # 7.5 Convert coverage to Cobertura format for SonarCloud
       - name: Convert coverage to Cobertura format
